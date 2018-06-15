@@ -283,7 +283,7 @@
     :description
     "Remap `evil-surround' bindings."
     :loader
-    (spacemacs|use-package-add-hook evil-surround :post-init BODY)
+    (spacemacs|use-package-add-hook evil-surround :post-config BODY)
     :common
     (kl/evil-correct-keys 'visual evil-surround-mode-map "s")))
 
@@ -309,7 +309,7 @@
     :description
     "Remap `flycheck-error-list' bindings."
     :loader
-    (spacemacs|use-package-add-hook flycheck :post-init BODY)
+    (spacemacs|use-package-add-hook flycheck :post-config BODY)
     :common
     (kl/evil-correct-keys 'evilified flycheck-error-list-mode-map
       "j"
