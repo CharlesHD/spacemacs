@@ -37,10 +37,6 @@
   (expand-file-name (concat spacemacs-start-directory "layers/"))
   "Spacemacs layers directory.")
 
-(defconst configuration-layer-private-directory
-  (expand-file-name (concat spacemacs-start-directory "private/"))
-  "Spacemacs private layers base directory.")
-
 (defconst configuration-layer-private-layer-directory
   (let ((dotspacemacs-layer-dir
          (when dotspacemacs-directory
@@ -49,7 +45,7 @@
     (if (and dotspacemacs-directory
              (file-exists-p dotspacemacs-layer-dir))
         dotspacemacs-layer-dir
-      configuration-layer-private-directory))
+      spacemacs-private-directory))
   "Spacemacs default directory for private layers.")
 
 (defconst configuration-layer-lock-file
@@ -399,7 +395,7 @@ file.")
   "If non-nil then warning messages emitted by the layer system are ignored.")
 
 (defvar configuration-layer--package-properties-read-onlyp nil
-  "If non-nil then package properties are read only and cannot be overriden by
+  "If non-nil then package properties are read only and cannot be overridden by
 `configuration-layer/make-package'.")
 
 (defvar configuration-layer--declared-layers-usedp nil
@@ -584,9 +580,10 @@ refreshed during the current session."
    (spacemacs-force-dump
     ;; force dump
     (configuration-layer//load)
-    (configuration-layer/message (concat "--force-dump passed on the command line, "
-                       "forcing a redump."))
-    (configuration-layer//dump-emacs))
+    (when (spacemacs/emacs-with-pdumper-set-p)
+      (configuration-layer/message (concat "--force-dump passed on the command line, "
+                         "forcing a redump."))
+      (configuration-layer//dump-emacs)))
    ((spacemacs-is-dumping-p)
     ;; dumping
     (configuration-layer//load)
@@ -668,8 +665,9 @@ To prevent package from being installed or uninstalled set the variable
   (configuration-layer//set-layers-variables configuration-layer--used-layers)
   (configuration-layer//load-layers-files configuration-layer--used-layers
                         '("keybindings.el"))
-  (dotspacemacs|call-func dotspacemacs/user-load
-                          "Calling dotfile user-load..."))
+  (when (spacemacs-is-dumping-p)
+    (dotspacemacs|call-func dotspacemacs/user-load
+                            "Calling dotfile user-load...")))
 
 (defun configuration-layer/load-auto-layer-file ()
   "Load `auto-layer.el' file"
@@ -874,7 +872,7 @@ a new object."
       (when protected
         (push pkg-name configuration-layer--protected-packages)))
     (when ownerp
-      ;; warn about mutliple owners
+      ;; warn about multiple owners
       (when (and (oref obj :owners)
                  (not (memq layer-name (oref obj :owners))))
         (configuration-layer//warning
@@ -1218,7 +1216,7 @@ USEDP if non-nil indicates that made packages are used packages."
              obj (and (cfgl-package-get-safe-owner obj) usedp))))))))
 
 (defun configuration-layer/make-packages-from-dotfile (&optional usedp)
-  "Read the additonal packages declared in the dotfile and create packages.
+  "Read the additional packages declared in the dotfile and create packages.
 USEDP if non-nil indicates that made packages are used packages."
   (dolist (pkg (append dotspacemacs-additional-packages
                        dotspacemacs--additional-theme-packages))
@@ -1383,7 +1381,7 @@ Returns nil if the directory is not a category."
   "Initialize `configuration-layer--indexed-layers' with layer directories.
 If REFRESH-INDEX is non-nil, the layer index is cleared before
 discovery."
-  ;; load private layers at the end on purpose we asume that the user layers
+  ;; load private layers at the end on purpose we assume that the user layers
   ;; must have the final word on configuration choices. Let
   ;; `dotspacemacs-directory' override the private directory if it exists.
   (when refresh-index
@@ -1393,7 +1391,7 @@ discovery."
                        ;; layers shipped with spacemacs
                        (list configuration-layer-directory)
                        ;; layers in private folder ~/.emacs.d/private
-                       (list configuration-layer-private-directory)
+                       (list spacemacs-private-directory)
                        ;; layers in dotdirectory
                        ;; this path may not exist, so check if it does
                        (when dotspacemacs-directory
@@ -1974,7 +1972,7 @@ RNAME is the name symbol of another existing layer."
       nil))
    ((eq 'local location)
     (let ((dir (if (eq 'dotfile owner)
-                   configuration-layer-private-directory
+                   spacemacs-private-directory
                  (let* ((owner (configuration-layer/get-layer owner)))
                    (when owner (oref owner :dir))))))
       (if dir
@@ -2239,7 +2237,7 @@ to select one."
     (package-activate pkg)))
 
 (defun configuration-layer//get-packages-upstream-dependencies-from-alist ()
-  "Returns upsteam dependencies hash map for all packages in `package-alist'.
+  "Returns upstream dependencies hash map for all packages in `package-alist'.
 The keys are package names and the values are lists of package names that
 depends on it."
   (let ((result (make-hash-table :size 1024)))
@@ -2444,18 +2442,21 @@ depends on it."
   (let ((stats (configuration-layer/configured-packages-stats
                 configuration-layer--used-packages)))
     (spacemacs-buffer/insert-page-break)
-    (spacemacs-buffer/append
-     (format "\n%s packages loaded in %.3fs (e:%s r:%s l:%s b:%s)"
-             (cadr (assq 'total stats))
-             configuration-layer--spacemacs-startup-time
-             (cadr (assq 'elpa stats))
-             (cadr (assq 'recipe stats))
-             (cadr (assq 'local stats))
-             (cadr (assq 'built-in stats))))
     (with-current-buffer (get-buffer-create spacemacs-buffer-name)
       (let ((buffer-read-only nil))
-	(spacemacs-buffer//center-line)
-	(insert "\n")))))
+        (spacemacs-buffer/append
+         (format "\n%s packages loaded in %.3fs (e:%s r:%s l:%s b:%s)"
+                 (cadr (assq 'total stats))
+                 configuration-layer--spacemacs-startup-time
+                 (cadr (assq 'elpa stats))
+                 (cadr (assq 'recipe stats))
+                 (cadr (assq 'local stats))
+                 (cadr (assq 'built-in stats))))
+        (spacemacs-buffer//center-line)
+        (spacemacs-buffer/append (format "\n(%.3fs spent in your user-config)"
+                           dotspacemacs--user-config-elapsed-time))
+        (spacemacs-buffer//center-line)
+        (insert "\n")))))
 
 (defun configuration-layer//get-indexed-elpa-package-names ()
   "Return a list of all ELPA packages in indexed packages and dependencies."

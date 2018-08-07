@@ -12,6 +12,7 @@
 
 (require 'subr-x nil 'noerror)
 (require 'core-emacs-backports)
+(require 'core-env)
 (require 'page-break-lines)
 (require 'core-hooks)
 (require 'core-debug)
@@ -57,7 +58,7 @@ the final step of executing code in `emacs-startup-hook'.")
   (hidden-mode-line-mode)
   (spacemacs//removes-gui-elements)
   (spacemacs//setup-ido-vertical-mode)
-  ;; explicitly set the prefered coding systems to avoid annoying prompt
+  ;; explicitly set the preferred coding systems to avoid annoying prompt
   ;; from emacs (especially on Microsoft Windows)
   (prefer-coding-system 'utf-8)
   ;; TODO move these variables when evil is removed from the bootstrapped
@@ -86,7 +87,7 @@ the final step of executing code in `emacs-startup-hook'.")
   ;; like `dotspacemacs/user-config`, users expect the custom settings to be the
   ;; effective ones.
   ;; Note: Loading custom-settings twice is not ideal since they can have side
-  ;; effects! Maybe an inhibit variable in Emacs can supress these side effects?
+  ;; effects! Maybe an inhibit variable in Emacs can suppress these side effects?
   (spacemacs/initialize-custom-file)
   ;; Commenting the first load although it is mentioned above that we must do it
   ;; I don't recall why we must load the custom settings twice and my experiment
@@ -145,6 +146,10 @@ the final step of executing code in `emacs-startup-hook'.")
   ;; check for new version
   (if dotspacemacs-mode-line-unicode-symbols
       (setq-default spacemacs-version-check-lighter "[⇪]"))
+  ;; load environment variables
+  (if (fboundp 'dotspacemacs/user-env)
+      (dotspacemacs/call-user-env)
+    (spacemacs/load-spacemacs-env))
   ;; install the dotfile if required
   (dotspacemacs/maybe-install-dotfile))
 

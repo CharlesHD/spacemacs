@@ -13,7 +13,8 @@
       '(evil-anzu
         evil-args
         evil-cleverparens
-        evil-ediff
+        ;; this package has been moved, need to import it to Spacemacs
+        ;; evil-ediff
         evil-escape
         evil-exchange
         evil-goggles
@@ -99,9 +100,14 @@
   (use-package evil-escape
     :defer t
     :init
-    (spacemacs|add-transient-hook evil-normal-state-exit-hook
-      (lambda () (require 'evil-escape))
-      lazy-load-evil-escape)
+    (add-hook 'emacs-startup-hook
+              (lambda ()
+                (spacemacs|add-transient-hook evil-normal-state-exit-hook
+                  (lambda () (require 'evil-escape))
+                  lazy-load-evil-escape-1)
+                (spacemacs|add-transient-hook window-configuration-change-hook
+                  (lambda () (require 'evil-escape))
+                  lazy-load-evil-escape-2)))
     :config
     (progn
       (add-hook 'spacemacs-editing-style-hook #'spacemacs//evil-escape-deactivate-in-holy-mode)
@@ -307,9 +313,13 @@
   (use-package evil-surround
     :defer t
     :init
-    (spacemacs|add-transient-hook evil-visual-state-entry-hook
-      (lambda () (require 'evil-surround))
-      lazy-load-evil-surround)
+    (progn
+      (spacemacs|add-transient-hook evil-visual-state-entry-hook
+        (lambda () (require 'evil-surround))
+        lazy-load-evil-surround)
+      (spacemacs|add-transient-hook evil-operator-state-entry-hook
+        (lambda () (require 'evil-surround))
+        lazy-load-evil-surround-2))
     :config
     (progn
       ;; `s' for surround instead of `substitute'

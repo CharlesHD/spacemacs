@@ -88,6 +88,19 @@ automatically applied to."
   :type '(list symbol))
 
 
+;; ido-mode remaps some commands to ido counterparts.  We want default Emacs key
+;; bindings (those under C-x) to use ido, but we want to use the original
+;; commands in Spacemacs key bindings (those under M-m or SPC) so that they use
+;; `read-file-name-function', `completing-read-function',
+;; `completion-in-region-function', etc. configured by Helm or Ivy etc.  The
+;; following aliases allow us to bind Spacemacs keys to the original commands.
+(defalias 'spacemacs/find-file-other-frame 'find-file-other-frame)
+(defalias 'spacemacs/dired 'dired)
+(defalias 'spacemacs/dired-other-frame 'dired-other-frame)
+(defalias 'spacemacs/switch-to-buffer-other-frame 'switch-to-buffer-other-frame)
+(defalias 'spacemacs/insert-file 'insert-file)
+(defalias 'spacemacs/display-buffer-other-frame 'display-buffer-other-frame)
+
 (defun spacemacs/indent-region-or-buffer ()
   "Indent a region if selected, otherwise the whole buffer."
   (interactive)
@@ -479,15 +492,96 @@ If the universal prefix argument is used then will the windows too."
             (if dedicated "no longer " "")
             (buffer-name))))
 
-;; http://camdez.com/blog/2013/11/14/emacs-show-buffer-file-name/
-(defun spacemacs/show-and-copy-buffer-filename ()
-  "Show and copy the full path to the current file in the minibuffer."
+
+;; Copy file path
+
+(defun spacemacs--directory-path ()
+  "Retrieve the directory path of the current buffer.
+
+If the buffer is not visiting a file, use the `list-buffers-directory'
+variable as a fallback to display the directory, useful in buffers like the
+ones created by `magit' and `dired'.
+
+Returns:
+  - A string containing the directory path in case of success.
+  - `nil' in case the current buffer does not have a directory."
+  (when-let (directory-name (if-let (file-name (buffer-file-name))
+                                (file-name-directory file-name)
+                              list-buffers-directory))
+    (file-truename directory-name)))
+
+(defun spacemacs--file-path ()
+  "Retrieve the file path of the current buffer.
+
+Returns:
+  - A string containing the file path in case of success.
+  - `nil' in case the current buffer does not have a directory."
+  (when-let (file-path (buffer-file-name))
+    (file-truename file-path)))
+
+(defun spacemacs--file-path-with-line ()
+  "Retrieve the file path of the current buffer, including line number.
+
+Returns:
+  - A string containing the file path in case of success.
+  - `nil' in case the current buffer does not have a directory."
+  (when-let (file-path (spacemacs--file-path))
+    (concat file-path ":" (number-to-string (line-number-at-pos)))))
+
+(defun spacemacs--file-path-with-line-column ()
+  "Retrieve the file path of the current buffer, including line and column number.
+
+Returns:
+  - A string containing the file path in case of success.
+  - `nil' in case the current buffer does not have a directory."
+  (when-let (file-path (spacemacs--file-path-with-line))
+    (concat
+      file-path
+      ":"
+      (number-to-string (if (and
+                              ;; Emacs 26 introduced this variable.
+                              ;; Remove this check once 26 becomes the minimum version.
+                              (boundp column-number-indicator-zero-based)
+                              (not column-number-indicator-zero-based))
+                            (1+ (current-column))
+                          (current-column))))))
+
+(defun spacemacs/copy-directory-path ()
+  "Copy and show the directory path of the current buffer.
+
+If the buffer is not visiting a file, use the `list-buffers-directory'
+variable as a fallback to display the directory, useful in buffers like the
+ones created by `magit' and `dired'."
   (interactive)
-  ;; list-buffers-directory is the variable set in dired buffers
-  (let ((file-name (or (buffer-file-name) list-buffers-directory)))
-    (if file-name
-        (message (kill-new file-name))
-      (error "Buffer not visiting a file"))))
+  (if-let (directory-path (spacemacs--directory-path))
+      (message "%s" (kill-new directory-path))
+    (message "WARNING: Current buffer does not have a directory!")))
+
+(defun spacemacs/copy-file-path ()
+  "Copy and show the file path of the current buffer."
+  (interactive)
+  (if-let (file-path (spacemacs--file-path))
+      (message "%s" (kill-new file-path))
+    (message "WARNING: Current buffer is not attached to a file!")))
+
+(defun spacemacs/copy-file-path-with-line ()
+  "Copy and show the file path of the current buffer, including line number."
+  (interactive)
+  (if-let (file-path (spacemacs--file-path-with-line))
+      (message "%s" (kill-new file-path))
+    (message "WARNING: Current buffer is not attached to a file!")))
+
+(defun spacemacs/copy-file-path-with-line-column ()
+  "Copy and show the file path of the current buffer, including line and column number.
+
+This function respects the value of the `column-number-indicator-zero-based'
+variable."
+  (interactive)
+  (if-let (file-path (spacemacs--file-path-with-line-column))
+      (message "%s" (kill-new file-path))
+    (message "WARNING: Current buffer is not attached to a file!")))
+
+
 
 ;; adapted from bozhidar
 ;; http://emacsredux.com/blog/2013/05/18/instant-access-to-init-dot-el/
@@ -518,7 +612,8 @@ buffer in a split window."
       ('left  (split-window-horizontally))
       ('below (spacemacs/split-window-vertically-and-switch))
       ('above (split-window-vertically))
-      ('right (spacemacs/split-window-horizontally-and-switch)))
+      ('right (spacemacs/split-window-horizontally-and-switch))
+      ('frame (select-frame (make-frame))))
     ;; Prompt to save on `save-some-buffers' with positive PRED
     (with-current-buffer newbuf
       (setq-local buffer-offer-save t))
@@ -549,6 +644,12 @@ in a split window above."
 in a split window to the right."
   (interactive)
   (spacemacs/new-empty-buffer 'right))
+
+(defun spacemacs/new-empty-buffer-new-frame ()
+  "Create a new buffer called untitled(<n>),
+in a new frame."
+  (interactive)
+  (spacemacs/new-empty-buffer 'frame))
 
 ;; from https://gist.github.com/timcharper/493269
 (defun spacemacs/split-window-vertically-and-switch ()
@@ -1346,14 +1447,18 @@ Decision is based on `dotspacemacs-line-numbers'."
 ;; for the different possible cases
 (defun spacemacs//linum-enabled-for-current-major-mode ()
   "Return non-nil if line number is enabled for current major-mode."
-  ;; default `enabled-for-modes' to '(prog-mode text-mode), because it is a more
-  ;; sensible default than enabling in all buffers - including Magit buffers,
-  ;; terminal buffers, etc.
-  (let* ((user-enabled-for-modes (spacemacs/mplist-get-values dotspacemacs-line-numbers
-                                                       :enabled-for-modes))
-         (enabled-for-modes (or user-enabled-for-modes '(prog-mode text-mode)))
-         (disabled-for-modes (spacemacs/mplist-get-values dotspacemacs-line-numbers
-                                                   :disabled-for-modes))
+  (let* ((disabled-for-modes (spacemacs/mplist-get-values dotspacemacs-line-numbers
+                                                          :disabled-for-modes))
+         (user-enabled-for-modes (spacemacs/mplist-get-values dotspacemacs-line-numbers
+                                                              :enabled-for-modes))
+         ;; default `enabled-for-modes' to '(prog-mode text-mode), because it is
+         ;; a more sensible default than enabling in all buffers - including
+         ;; Magit buffers, terminal buffers, etc. But don't include prog-mode or
+         ;; text-mode if they're explicitly disabled by user
+         (enabled-for-modes (or user-enabled-for-modes
+                                (seq-difference '(prog-mode text-mode)
+                                                disabled-for-modes
+                                                #'eq)))
          (enabled-for-parent (or (and (equal enabled-for-modes '(all)) 'all)
                                  (apply #'derived-mode-p enabled-for-modes)))
          (disabled-for-parent (apply #'derived-mode-p disabled-for-modes)))

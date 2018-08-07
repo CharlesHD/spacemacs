@@ -9,39 +9,6 @@
 ;;
 ;;; License: GPLv3
 
-
-
-(defun spacemacs/loadenv ()
-  "Gets and sets all the environment variables from user shell."
-  (interactive)
-  (spacemacs-buffer/message "Importing environment variables..")
-  (require 'async nil t)
-  (async-start
-   `(lambda ()
-      ,(async-inject-variables
-        "\\`dotspacemacs-import-env-vars-shell-file-name\\'")
-      (if dotspacemacs-import-env-vars-shell-file-name
-          (let ((shell-file-name
-                 dotspacemacs-import-env-vars-shell-file-name))
-            (split-string (shell-command-to-string "env") "\n"))
-        (split-string (shell-command-to-string "env") "\n")))
-   (lambda (envvars)
-     (spacemacs-buffer/message "Imported environment variables:")
-     (dolist (env envvars)
-       (if (string-match "^[a-zA-Z_]+[a-zA-Z0-9_]*=" env)
-           (let* ((var (split-string env "="))
-                  (k (car var))
-                  (v (cadr var)))
-             (spacemacs-buffer/message "  - %s=%s" k v)
-             (if (string-equal "PATH" k)
-                 (let ((paths (split-string v path-separator)))
-                   (dolist (p paths)
-                     (add-to-list 'exec-path p)))
-               (setenv k v)))))
-     ;; be sure we keep the default shell in this Emacs session
-     ;; this is to prevent potential issues with packages which could
-     ;; expect a default shell
-     (setenv "SHELL" shell-file-name))))
 
 
 
@@ -170,11 +137,11 @@ the boundaries of the text object."
                                           ,(regexp-quote start)
                                           ,(regexp-quote end))
      (with-eval-after-load 'evil-surround
-       (push (cons (string-to-char ,key)
-                   (if ,end
-                       (cons ,start ,end)
-                     ,start))
-             evil-surround-pairs-alist))))
+       (add-to-list 'evil-surround-pairs-alist
+                    (cons (string-to-char ,key)
+                          (if ,end
+                              (cons ,start ,end)
+                            ,start))))))
 
 (defmacro spacemacs|define-text-object-regexp (key name start-regexp end-regexp)
   "Define a text object.
