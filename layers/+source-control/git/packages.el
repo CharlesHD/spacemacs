@@ -216,8 +216,8 @@ Press [_b_] again to blame further in the history, [_q_] to go up or quit."
         'spacemacs/magit-toggle-whitespace)
       ;; full screen magit-status
       (when git-magit-status-fullscreen
-        (setq magit-display-buffer-function 'magit-display-buffer-fullframe-status-v1))
-      (add-to-list 'magit-log-arguments "--color"))))
+        (setq magit-display-buffer-function
+              'magit-display-buffer-fullframe-status-v1)))))
 
 (defun git/init-magit-gitflow ()
   (use-package magit-gitflow
@@ -255,7 +255,8 @@ Press [_b_] again to blame further in the history, [_q_] to go up or quit."
                  ("smeargle-clear" . "clear"))))
           (dolist (nd descr)
             ;; ensure the target matches the whole string
-            (push (cons (cons nil (concat "\\`" (car nd) "\\'")) (cons nil (cdr nd)))
+            (push (cons (cons nil (concat "\\`" (car nd) "\\'"))
+                        (cons nil (cdr nd)))
                   which-key-replacement-alist))))
       (spacemacs/set-leader-keys
         "gHc" 'smeargle-clear
