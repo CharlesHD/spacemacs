@@ -14,10 +14,12 @@
         add-node-modules-path
         company
         eldoc
+        emmet-mode
         flycheck
         smartparens
         tide
         typescript-mode
+        import-js
         web-mode
         yasnippet
         ))
@@ -36,13 +38,42 @@
                    '(typescript-mode-local-vars-hook
                      typescript-tsx-mode-local-vars-hook) t))
 
+(defun typescript/post-init-emmet-mode ()
+  (add-hook 'typescript-tsx-mode-hook #'spacemacs/typescript-emmet-mode))
+
+(defun typescript/set-tide-linter ()
+  (with-eval-after-load 'tide
+    (with-eval-after-load 'flycheck
+        (cond ((eq typescript-linter `tslint)
+              (progn
+                (flycheck-add-mode 'typescript-tide 'typescript-tsx-mode)
+                (flycheck-add-mode 'typescript-tslint 'typescript-tsx-mode)))
+              ((eq typescript-linter `eslint)
+              (progn
+                (flycheck-add-mode 'javascript-eslint 'typescript-tsx-mode)
+                (flycheck-add-mode 'javascript-eslint 'typescript-mode)
+                (add-to-list 'flycheck-disabled-checkers 'typescript-tslint)
+                (flycheck-disable-checker 'typescript-tslint)
+                (flycheck-add-mode 'tsx-tide 'typescript-tsx-mode)
+                (flycheck-add-next-checker 'typescript-tide 'javascript-eslint 'append)
+                (flycheck-add-next-checker 'tsx-tide 'javascript-eslint 'append)))
+              (t
+                (message
+                "Invalid typescript-layer configuration, no such linter: %s" typescript-linter))))))
+
 (defun typescript/post-init-flycheck ()
   (spacemacs/enable-flycheck 'typescript-mode)
   (spacemacs/enable-flycheck 'typescript-tsx-mode)
-  (with-eval-after-load 'tide
-    (with-eval-after-load 'flycheck
-      (flycheck-add-mode 'typescript-tide 'typescript-tsx-mode)
-      (flycheck-add-mode 'typescript-tslint 'typescript-tsx-mode))))
+  (cond ((eq typescript-backend `tide)
+         (progn (typescript/set-tide-linter)))
+        ((eq typescript-backend `lsp)
+         (with-eval-after-load 'lsp-ui
+         (with-eval-after-load 'flycheck
+           (progn
+         (flycheck-add-mode 'javascript-eslint 'typescript-tsx-mode)
+         (flycheck-add-mode 'javascript-eslint 'typescript-mode)
+         (flycheck-add-next-checker 'lsp-ui 'javascript-eslint 'append)
+         ))))))
 
 (defun typescript/post-init-smartparens ()
   (if dotspacemacs-smartparens-strict-mode
@@ -126,4 +157,13 @@
         (add-hook 'typescript-mode-hook 'spacemacs/typescript-fmt-before-save-hook))
       (spacemacs/set-leader-keys-for-major-mode 'typescript-mode
         "="  'spacemacs/typescript-format
+        "sp" 'spacemacs/typescript-open-region-in-playground)
+      (spacemacs/set-leader-keys-for-major-mode 'typescript-tsx-mode
+        "="  'spacemacs/typescript-format
         "sp" 'spacemacs/typescript-open-region-in-playground)))))
+
+(defun typescript/pre-init-import-js ()
+  (if (eq javascript-import-tool 'import-js)
+      (progn
+        (add-to-list 'spacemacs--import-js-modes (cons 'typescript-mode 'typescript-mode-hook))
+        (add-to-list 'spacemacs--import-js-modes (cons 'typescript-tsx-mode 'typescript-tsx-mode-hook)))))
