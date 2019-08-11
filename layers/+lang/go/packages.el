@@ -15,10 +15,10 @@
         (company-go :requires company)
         counsel-gtags
         flycheck
-        (flycheck-gometalinter :toggle (and go-use-gometalinter
+        (flycheck-gometalinter :toggle (and (eq go-linter 'gometalinter)
                                             (configuration-layer/package-used-p
                                              'flycheck)))
-        (flycheck-golangci-lint :toggle (and go-use-golangci-lint
+        (flycheck-golangci-lint :toggle (and (eq go-linter 'golangci-lint)
                                              (configuration-layer/package-used-p
                                               'flycheck)))
         ggtags
@@ -32,8 +32,7 @@
         go-rename
         go-tag
         godoctor
-        popwin
-        ))
+        popwin))
 
 (defun go/init-company-go ()
   (use-package company-go
@@ -55,12 +54,12 @@
 (defun go/init-flycheck-gometalinter ()
   (use-package flycheck-gometalinter
     :defer t
-    :init (add-hook 'go-mode-hook 'spacemacs//go-enable-gometalinter t)))
+    :init (add-hook 'go-mode-hook 'spacemacs//go-enable-flycheck-extra t)))
 
 (defun go/init-flycheck-golangci-lint ()
   (use-package flycheck-golangci-lint
     :defer t
-    :init (add-hook 'go-mode-hook 'spacemacs//go-enable-golangci-lint t)))
+    :init (add-hook 'go-mode-hook 'spacemacs//go-enable-flycheck-extra t)))
 
 (defun go/post-init-ggtags ()
   (add-hook 'go-mode-local-vars-hook #'spacemacs/ggtags-mode-enable))
@@ -82,6 +81,7 @@
     :defer t
     :init
     (progn
+      (spacemacs/declare-prefix-for-mode 'go-mode "mtg" "generate")
       (spacemacs/set-leader-keys-for-major-mode 'go-mode
         "tgg" 'go-gen-test-dwim
         "tgf" 'go-gen-test-exported
@@ -125,7 +125,13 @@
                 #'spacemacs//go-setup-backend)
       (dolist (value '(lsp go-mode))
         (add-to-list 'safe-local-variable-values
-                     (cons 'go-backend value))))
+                     (cons 'go-backend value)))
+      (spacemacs|add-toggle go-test-verbose
+        :documentation "Enable verbose test output."
+        :status go-test-verbose
+        :on (setq go-test-verbose t)
+        :off (setq go-test-verbose nil)
+        :evil-leader-for-mode (go-mode . "tv")))
     :config
     (progn
       (when go-format-before-save
@@ -136,6 +142,7 @@
       (spacemacs/declare-prefix-for-mode 'go-mode "mi" "imports")
       (spacemacs/declare-prefix-for-mode 'go-mode "mr" "refactoring")
       (spacemacs/declare-prefix-for-mode 'go-mode "mt" "test")
+      (spacemacs/declare-prefix-for-mode 'go-mode "mT" "toggle")
       (spacemacs/declare-prefix-for-mode 'go-mode "mx" "execute")
       (spacemacs/set-leader-keys-for-major-mode 'go-mode
         "="  'gofmt

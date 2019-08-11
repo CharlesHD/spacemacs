@@ -19,6 +19,8 @@
         company
         eldoc
         evil-cleverparens
+        flycheck
+        (flycheck-clojure :toggle clojure-enable-linters)
         ggtags
         counsel-gtags
         helm-gtags
@@ -42,17 +44,13 @@
             cider-repl-use-clojure-font-lock t
             cider-repl-history-file (concat spacemacs-cache-directory "cider-repl-history"))
       (add-hook 'clojure-mode-hook 'cider-mode)
+
       (dolist (x '(spacemacs-jump-handlers-clojure-mode
                    spacemacs-jump-handlers-clojurec-mode
                    spacemacs-jump-handlers-clojurescript-mode
                    spacemacs-jump-handlers-clojurex-mode
                    spacemacs-jump-handlers-cider-repl-mode))
-        (add-to-list x 'spacemacs/clj-find-var))
-
-      (add-hook 'clojure-mode-hook #'spacemacs//init-jump-handlers-clojure-mode)
-      (add-hook 'clojurescript-mode-hook #'spacemacs//init-jump-handlers-clojurescript-mode)
-      (add-hook 'clojurec-mode-hook #'spacemacs//init-jump-handlers-clojurec-mode)
-      (add-hook 'cider-repl-mode-hook #'spacemacs//init-jump-handlers-cider-repl-mode)
+        (add-to-list x '(spacemacs/clj-find-var :async t)))
 
       ;; TODO: having this work for cider-macroexpansion-mode would be nice,
       ;;       but the problem is that it uses clojure-mode as its major-mode
@@ -64,6 +62,7 @@
                ("mh" . "documentation")
                ("mp" . "profile")
                ("ms" . "repl")
+               ("msj" . "jack-in")
                ("mt" . "test")
                ("mT" . "toggle")
                )))
@@ -85,10 +84,13 @@
             "eb" 'cider-eval-buffer
             "ee" 'cider-eval-last-sexp
             "ef" 'cider-eval-defun-at-point
+            "ei" 'cider-interrupt
             "em" 'cider-macroexpand-1
             "eM" 'cider-macroexpand-all
             "eP" 'cider-pprint-eval-last-sexp
             "er" 'cider-eval-region
+            "eu" 'cider-undef
+            "ev" 'cider-eval-sexp-at-point
             "ew" 'cider-eval-last-sexp-and-replace
 
             "="  'cider-format-buffer
@@ -96,14 +98,16 @@
 
             "gb" 'cider-pop-back
             "gc" 'cider-classpath
+            "gg" 'spacemacs/clj-find-var
             "ge" 'cider-jump-to-compilation-error
             "gn" 'cider-find-ns
             "gr" 'cider-find-resource
             "gs" 'cider-browse-spec
             "gS" 'cider-browse-spec-all
 
-            "'"  'cider-jack-in
-            "\"" 'cider-jack-in-clojurescript
+            "'"  'cider-jack-in-clj
+            "\"" 'cider-jack-in-cljs
+            "\&" 'cider-jack-in-clj&cljs
             "sb" 'cider-load-buffer
             "sB" 'spacemacs/cider-send-buffer-in-repl-and-focus
             "sc" (if (eq m 'cider-repl-mode)
@@ -114,8 +118,9 @@
             "sE" 'spacemacs/cider-send-last-sexp-to-repl-focus
             "sf" 'spacemacs/cider-send-function-to-repl
             "sF" 'spacemacs/cider-send-function-to-repl-focus
-            "si" 'cider-jack-in
-            "sI" 'cider-jack-in-clojurescript
+            "sjc" 'cider-jack-in-clj
+            "sjf" 'cider-jack-in-clj&cljs
+            "sjs" 'cider-jack-in-cljs
             "sn" 'spacemacs/cider-send-ns-form-to-repl
             "sN" 'spacemacs/cider-send-ns-form-to-repl-focus
             "so" 'cider-repl-switch-to-other
@@ -125,6 +130,7 @@
             "ss" (if (eq m 'cider-repl-mode)
                      'cider-switch-to-last-clojure-buffer
                    'cider-switch-to-repl-buffer)
+            "su" 'cider-repl-require-repl-utils
             "sx" 'cider-ns-refresh
             "sX" 'cider-restart
 
@@ -165,6 +171,9 @@
       ;; add support for golden-ratio
       (with-eval-after-load 'golden-ratio
         (add-to-list 'golden-ratio-extra-commands 'cider-popup-buffer-quit-function))
+      ;; setup linters. NOTE: It must be done after both CIDER and Flycheck are loaded.
+      (when clojure-enable-linters
+        (with-eval-after-load 'flycheck (flycheck-clojure-setup)))
       ;; add support for evil
       (evil-set-initial-state 'cider-stacktrace-mode 'motion)
       (evil-set-initial-state 'cider-popup-buffer-mode 'motion)
